@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dockviz-app
+  labels:
+    app: dockviz
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dockviz
+  template:
+    metadata:
+      labels:
+        app: dockviz
+    spec:
+      # If you specifically want to target a friend's worker node, you can use nodeSelector
+      # nodeSelector:
+      #   kubernetes.io/hostname: friend-worker-node-1
+      containers:
+      - name: dockviz-container
+        image: halsangi/dockviz:5  # <-- Change this to your actual image
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 5000
+        volumeMounts:
+        - name: docker-socket
+          mountPath: /var/run/docker.sock
+        # Optional: Requests and limits
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "250m"
+      volumes:
+      - name: docker-socket
+        hostPath:
+          path: /var/run/docker.sock
+          type: Socket
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dockviz-service
+spec:
+  type: NodePort # This exposes the app on a port accessible directly via the worker node IPs
+  selector:
+    app: dockviz
+  ports:
+    - protocol: TCP
+      port: 5000
+      targetPort: 5000
+      nodePort: 30500 # You will be able to access the app on http://<WORKER_IP>:30500
